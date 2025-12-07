@@ -12,7 +12,10 @@
     "db-migrate": "drizzle-kit migrate",
     "fetch-x-users": "tsx scripts/fetch-x-users.ts",
     "collect-first-degree": "tsx scripts/collect-first-degree.ts",
-    "ingest-first-degree": "tsx scripts/ingest-first-degree.ts"
+    "ingest-first-degree": "tsx scripts/ingest-first-degree.ts",
+    "messages:fetch": "tsx scripts/messages/fetch-user-tweets.ts",
+    "messages:embed": "tsx scripts/messages/embed-tweets.ts",
+    "messages:run": "tsx scripts/messages/run-workers.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.77",
