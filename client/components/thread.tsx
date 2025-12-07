@@ -490,7 +490,7 @@ export function Thread() {
               <button
                 type="button"
                 className="hint-pill"
-                onClick={() => handleHintClick("UC Berkeley Computer Science Student")}
+                onClick={() => handleHintClick("Senior SWE with ML Background in Mountain View")}
               >
                 Senior SWE with ML Background in Mountain View
               </button>
