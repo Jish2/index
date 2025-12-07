@@ -6,7 +6,7 @@ import { personFinderAgent } from "./agents/person-finder-agent";
 export const mastra = new Mastra({
   agents: { personFinderAgent },
   storage: new LibSQLStore({
-    // stores observability, scores, ... into memory storage, if it needs to persist, change to file:../mastra.db
+    // Stores observability data in-memory by default; configure a remote LibSQL URL for persistence.
     url: ":memory:",
   }),
   logger: new ConsoleLogger({
