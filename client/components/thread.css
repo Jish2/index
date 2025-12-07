@@ -364,11 +364,45 @@
   text-align: left;
   width: 100%;
   max-width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.thinking-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #4a9eff;
+  flex-shrink: 0;
+  margin-top: 6px;
+  animation: thinkingPulse 1.2s ease-in-out infinite;
+  box-shadow: 0 0 10px rgba(74, 158, 255, 0.6);
+}
+
+@keyframes thinkingPulse {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
 }
 
 @media (prefers-color-scheme: light) {
   .message-thinking {
     color: #666666; /* Slightly gray color for light theme */
+  }
+
+  .thinking-dot {
+    background: #2563eb;
+    box-shadow: 0 0 10px rgba(37, 99, 235, 0.5);
   }
 }
 

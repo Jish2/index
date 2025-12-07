@@ -558,11 +558,14 @@ export function Thread() {
     [handleSend]
   );
 
-  const handleHintClick = useCallback((hintText: string) => {
-    setInput(hintText);
-    // Automatically send the message with the hint text
-    handleSend(undefined, hintText);
-  }, [handleSend]);
+  const handleHintClick = useCallback(
+    (hintText: string) => {
+      setInput(hintText);
+      // Automatically send the message with the hint text
+      handleSend(undefined, hintText);
+    },
+    [handleSend]
+  );
 
   const hasMessages = messages.length > 0;
 
@@ -615,14 +618,20 @@ export function Thread() {
               <button
                 type="button"
                 className="hint-pill"
-                onClick={() => handleHintClick("SWE in Palo Alto who attended Stanford")}
+                onClick={() =>
+                  handleHintClick("SWE in Palo Alto who attended Stanford")
+                }
               >
                 SWE in Palo Alto who attended Stanford
               </button>
               <button
                 type="button"
                 className="hint-pill"
-                onClick={() => handleHintClick("Senior SWE with ML Background in Mountain View")}
+                onClick={() =>
+                  handleHintClick(
+                    "Senior SWE with ML Background in Mountain View"
+                  )
+                }
               >
                 Senior SWE with ML Background in Mountain View
               </button>
@@ -650,7 +659,10 @@ export function Thread() {
                 (message.thinkingActive || message.thinkingText) &&
                 !message.content && (
                   <div className="message-thinking" aria-live="polite">
-                    {message.thinkingText || "Thinking..."}
+                    {message.thinkingActive && (
+                      <span className="thinking-dot" aria-hidden="true" />
+                    )}
+                    <span>{message.thinkingText || "Thinking..."}</span>
                   </div>
                 )}
               {message.content && (
