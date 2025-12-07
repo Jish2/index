@@ -5,6 +5,7 @@ import Image from "next/image";
 import user1Image from "../app/user1.png";
 import user2Image from "../app/user2.png";
 import user3Image from "../app/user3.jpg";
+import { useChatReset } from "./chat-reset-context";
 import "./thread.css";
 
 interface ProfileData {
@@ -67,6 +68,22 @@ export function Thread() {
   const lastSubmissionTimeRef = useRef(0);
   const lastSubmissionContentRef = useRef<string>("");
   const populatedMessageIdsRef = useRef<Set<string>>(new Set());
+  const chatReset = useChatReset();
+
+  // Register reset function with context
+  useEffect(() => {
+    if (chatReset) {
+      chatReset.registerReset(() => {
+        setMessages([]);
+        setInput("");
+        isSubmittingRef.current = false;
+        messageIdCounterRef.current = 0;
+        lastSubmissionTimeRef.current = 0;
+        lastSubmissionContentRef.current = "";
+        populatedMessageIdsRef.current.clear();
+      });
+    }
+  }, [chatReset]);
 
   // Populate static data when thinking finishes (fallback if stream handler doesn't populate)
   useEffect(() => {
@@ -420,13 +437,6 @@ export function Thread() {
   // Normal layout when there are messages - centered like Grok
   return (
     <div className="thread-root thread-root-with-messages">
-      {/* Grok Logo Header */}
-      <div className="grok-header">
-        <div className="grok-logo-container">
-          <span className="grok-logo-text">Index</span>
-        </div>
-      </div>
-
       {/* Messages Area - Centered */}
       <div className="thread-viewport">
         <div className="messages-container-centered">

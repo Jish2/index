@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Image from "next/image";
+import { ChatResetProvider } from "@/components/chat-reset-context";
+import { Logo } from "@/components/logo";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,17 +29,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div className="fixed top-0 left-0 z-50 pl-4 pt-3">
-          <Image
-            src="/indexai-white-new.png"
-            alt="IndexAI Logo"
-            width={120}
-            height={40}
-            priority
-            className="h-auto"
-          />
-        </div>
-        {children}
+        <ChatResetProvider>
+          <Logo />
+          {children}
+        </ChatResetProvider>
       </body>
     </html>
   );
