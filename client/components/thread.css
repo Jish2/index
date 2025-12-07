@@ -54,6 +54,37 @@
   letter-spacing: -0.02em;
 }
 
+.github-link {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(20, 20, 20, 0.6);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+  backdrop-filter: blur(6px);
+}
+
+.github-link:hover {
+  transform: scale(1.05);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.github-link:focus-visible {
+  outline: 2px solid #4a9eff;
+  outline-offset: 2px;
+}
+
 /* Light theme logo */
 @media (prefers-color-scheme: light) {
   .grok-logo-icon {
@@ -66,6 +97,16 @@
 
   .grok-logo-text {
     color: #0d0d0d;
+  }
+
+  .github-link {
+    border-color: rgba(0, 0, 0, 0.12);
+    background: rgba(255, 255, 255, 0.85);
+    color: #0d0d0d;
+  }
+
+  .github-link:hover {
+    border-color: rgba(0, 0, 0, 0.4);
   }
 }
 
