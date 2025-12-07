@@ -7,6 +7,8 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  thinkingText?: string;
+  thinkingActive?: boolean;
 }
 
 type ChatPayloadMessage = {
@@ -32,6 +34,15 @@ export function Thread() {
       assistantPlaceholderId: string;
     }) => {
       let resolvedAssistantId = assistantPlaceholderId;
+      const updateAssistantMessage = (
+        updater: (current: Message) => Message
+      ) => {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === resolvedAssistantId ? updater(msg) : msg
+          )
+        );
+      };
 
       try {
         const response = await fetch("/api/chat", {
@@ -101,15 +112,37 @@ export function Thread() {
                 const delta =
                   typeof parsed.delta === "string" ? parsed.delta : "";
                 if (delta) {
-                  const targetId = resolvedAssistantId;
-                  setMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.id === targetId
-                        ? { ...msg, content: msg.content + delta }
-                        : msg
-                    )
-                  );
+                  updateAssistantMessage((msg) => ({
+                    ...msg,
+                    content: msg.content + delta,
+                  }));
                 }
+                break;
+              }
+              case "reasoning-start": {
+                updateAssistantMessage((msg) => ({
+                  ...msg,
+                  thinkingActive: true,
+                  thinkingText: "",
+                }));
+                break;
+              }
+              case "reasoning-delta": {
+                const reasoningDelta =
+                  typeof parsed.delta === "string" ? parsed.delta : "";
+                if (reasoningDelta) {
+                  updateAssistantMessage((msg) => ({
+                    ...msg,
+                    thinkingText: `${msg.thinkingText ?? ""}${reasoningDelta}`,
+                  }));
+                }
+                break;
+              }
+              case "reasoning-end": {
+                updateAssistantMessage((msg) => ({
+                  ...msg,
+                  thinkingActive: false,
+                }));
                 break;
               }
               case "error": {
@@ -117,12 +150,11 @@ export function Thread() {
                   typeof parsed.errorText === "string"
                     ? parsed.errorText
                     : "The assistant returned an error.";
-                const targetId = resolvedAssistantId;
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === targetId ? { ...msg, content: errorText } : msg
-                  )
-                );
+                updateAssistantMessage((msg) => ({
+                  ...msg,
+                  content: errorText,
+                  thinkingActive: false,
+                }));
                 finished = true;
                 break;
               }
@@ -149,13 +181,16 @@ export function Thread() {
         console.error("Error while streaming from Grok:", error);
         const fallbackMessage =
           "Sorry, something went wrong while contacting Grok. Please try again.";
-        const targetId = resolvedAssistantId;
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === targetId ? { ...msg, content: fallbackMessage } : msg
-          )
-        );
+        updateAssistantMessage((msg) => ({
+          ...msg,
+          content: fallbackMessage,
+          thinkingActive: false,
+        }));
       } finally {
+        updateAssistantMessage((msg) => ({
+          ...msg,
+          thinkingActive: false,
+        }));
         isSubmittingRef.current = false;
       }
     },
@@ -202,6 +237,8 @@ export function Thread() {
         id: assistantId,
         role: "assistant",
         content: "",
+        thinkingActive: true,
+        thinkingText: "Connecting to Grok...",
       };
 
       setMessages((prev) => [...prev, userMessage, assistantMessage]);
@@ -346,7 +383,27 @@ export function Thread() {
                 message.role === "user" ? "message-user" : "message-assistant"
               }
             >
-              <div className="message-content">{message.content}</div>
+              {message.role === "assistant" &&
+                (message.thinkingActive || message.thinkingText) && (
+                  <div className="message-thinking" aria-live="polite">
+                    <div className="message-thinking-header">
+                      <span className="message-thinking-spinner" />
+                      <span className="message-thinking-label">
+                        {message.thinkingActive
+                          ? "Thinking"
+                          : "Thought process"}
+                      </span>
+                    </div>
+                    {message.thinkingText ? (
+                      <div className="message-thinking-text">
+                        {message.thinkingText}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              <div className="message-content">
+                {message.content || (message.thinkingActive ? "..." : "")}
+              </div>
             </div>
           ))}
         </div>
