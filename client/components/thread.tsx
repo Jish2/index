@@ -9,6 +9,11 @@ interface Message {
   content: string;
 }
 
+type ChatPayloadMessage = {
+  role: Message["role"];
+  content: string;
+};
+
 export function Thread() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -18,108 +23,260 @@ export function Thread() {
   const lastSubmissionTimeRef = useRef(0);
   const lastSubmissionContentRef = useRef<string>("");
 
-  const handleSend = useCallback((e?: React.FormEvent | React.KeyboardEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    
-    // Prevent double submission - check and set atomically
-    if (isSubmittingRef.current) {
-      return;
-    }
-    
-    // Set flag immediately to prevent duplicate submissions
-    isSubmittingRef.current = true;
-    
-    setInput((currentInput) => {
-      if (!currentInput.trim()) {
+  const streamAssistantResponse = useCallback(
+    async ({
+      payloadMessages,
+      assistantPlaceholderId,
+    }: {
+      payloadMessages: ChatPayloadMessage[];
+      assistantPlaceholderId: string;
+    }) => {
+      let resolvedAssistantId = assistantPlaceholderId;
+
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ messages: payloadMessages }),
+        });
+
+        if (!response.ok || !response.body) {
+          throw new Error("Unable to reach the Grok backend.");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let finished = false;
+
+        const flushBuffer = () => {
+          while (true) {
+            const separatorIndex = buffer.indexOf("\n\n");
+            if (separatorIndex === -1) {
+              break;
+            }
+
+            const rawChunk = buffer.slice(0, separatorIndex).trim();
+            buffer = buffer.slice(separatorIndex + 2);
+
+            if (!rawChunk.startsWith("data:")) {
+              continue;
+            }
+
+            const data = rawChunk.slice(5).trim();
+            if (!data) {
+              continue;
+            }
+
+            if (data === "[DONE]") {
+              finished = true;
+              break;
+            }
+
+            let parsed: Record<string, unknown>;
+            try {
+              parsed = JSON.parse(data);
+            } catch (error) {
+              console.error("Failed to parse Grok stream chunk", error);
+              continue;
+            }
+
+            switch (parsed.type) {
+              case "text-start": {
+                const newId = typeof parsed.id === "string" ? parsed.id : null;
+                if (newId && newId !== resolvedAssistantId) {
+                  const targetId = resolvedAssistantId;
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === targetId ? { ...msg, id: newId } : msg
+                    )
+                  );
+                  resolvedAssistantId = newId;
+                }
+                break;
+              }
+              case "text-delta": {
+                const delta =
+                  typeof parsed.delta === "string" ? parsed.delta : "";
+                if (delta) {
+                  const targetId = resolvedAssistantId;
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === targetId
+                        ? { ...msg, content: msg.content + delta }
+                        : msg
+                    )
+                  );
+                }
+                break;
+              }
+              case "error": {
+                const errorText =
+                  typeof parsed.errorText === "string"
+                    ? parsed.errorText
+                    : "The assistant returned an error.";
+                const targetId = resolvedAssistantId;
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === targetId ? { ...msg, content: errorText } : msg
+                  )
+                );
+                finished = true;
+                break;
+              }
+              default:
+                break;
+            }
+          }
+        };
+
+        while (!finished) {
+          const { value, done } = await reader.read();
+          if (done) {
+            buffer += decoder.decode();
+            flushBuffer();
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          flushBuffer();
+        }
+
+        reader.releaseLock();
+      } catch (error) {
+        console.error("Error while streaming from Grok:", error);
+        const fallbackMessage =
+          "Sorry, something went wrong while contacting Grok. Please try again.";
+        const targetId = resolvedAssistantId;
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === targetId ? { ...msg, content: fallbackMessage } : msg
+          )
+        );
+      } finally {
         isSubmittingRef.current = false;
-        return currentInput;
+      }
+    },
+    []
+  );
+
+  const handleSend = useCallback(
+    (e?: React.FormEvent | React.KeyboardEvent) => {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
       }
 
-      const messageContent = currentInput.trim();
+      if (isSubmittingRef.current) {
+        return;
+      }
+
+      const messageContent = input.trim();
+      if (!messageContent) {
+        return;
+      }
+
       const now = Date.now();
-      
-      // Check if this is a duplicate submission within 500ms with the same content
       if (
         now - lastSubmissionTimeRef.current < 500 &&
         lastSubmissionContentRef.current === messageContent
       ) {
-        // This is a duplicate submission - ignore it
-        isSubmittingRef.current = false;
-        return "";
+        return;
       }
-      
-      // Update refs to track this submission
+
       lastSubmissionTimeRef.current = now;
       lastSubmissionContentRef.current = messageContent;
-      
+
       const userId = `user-${now}-${++messageIdCounterRef.current}`;
-      
+      const assistantId = `assistant-${now}-${++messageIdCounterRef.current}`;
+
       const userMessage: Message = {
         id: userId,
         role: "user",
         content: messageContent,
       };
 
-      // Use functional update
-      setMessages((prev) => [...prev, userMessage]);
+      const assistantMessage: Message = {
+        id: assistantId,
+        role: "assistant",
+        content: "",
+      };
 
-      // Simulate assistant response (no actual backend call)
-      const assistantId = `assistant-${now}-${++messageIdCounterRef.current}`;
-      setTimeout(() => {
-        const assistantMessage: Message = {
-          id: assistantId,
-          role: "assistant",
-          content: "I'm a UI-only version of Grok. Backend integration coming soon!",
-        };
-        setMessages((prev) => {
-          // Check if this assistant message was already added by ID
-          if (prev.some((msg) => msg.id === assistantId)) {
-            return prev;
-          }
-          return [...prev, assistantMessage];
-        });
-        isSubmittingRef.current = false;
-      }, 500);
+      setMessages((prev) => [...prev, userMessage, assistantMessage]);
+      setInput("");
 
-      return "";
-    });
-  }, []);
+      isSubmittingRef.current = true;
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
-  }, []);
+      const payloadMessages: ChatPayloadMessage[] = [
+        ...messages,
+        userMessage,
+      ].map(({ role, content }) => ({
+        role,
+        content,
+      }));
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+      streamAssistantResponse({
+        payloadMessages,
+        assistantPlaceholderId: assistantId,
+      });
+    },
+    [input, messages, streamAssistantResponse]
+  );
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setInput(e.target.value);
+    },
+    []
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Call handleSend directly - the guard will prevent duplicates
+        handleSend(e);
+      }
+    },
+    [handleSend]
+  );
+
+  const handleFormSubmit = useCallback(
+    (e: React.FormEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      // Call handleSend directly - the guard will prevent duplicates
-      handleSend(e);
-    }
-  }, [handleSend]);
-
-  const handleFormSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Only handle if not already submitting (button click case)
-    if (!isSubmittingRef.current) {
-      handleSend(e);
-    }
-  }, [handleSend]);
+      // Only handle if not already submitting (button click case)
+      if (!isSubmittingRef.current) {
+        handleSend(e);
+      }
+    },
+    [handleSend]
+  );
 
   const hasMessages = messages.length > 0;
 
   const composerForm = (
     <form ref={formRef} onSubmit={handleFormSubmit} className="composer-root">
-      <button type="button" className="composer-icon-button" aria-label="Attach file">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <button
+        type="button"
+        className="composer-icon-button"
+        aria-label="Attach file"
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
         </svg>
       </button>
-      
+
       <textarea
         className="composer-input"
         placeholder="Who are you looking for?"
@@ -128,9 +285,22 @@ export function Thread() {
         rows={1}
         onKeyDown={handleKeyDown}
       />
-      
-      <button type="submit" className="composer-mic-button" aria-label={hasMessages ? "Send message" : "Search"}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+
+      <button
+        type="submit"
+        className="composer-mic-button"
+        aria-label={hasMessages ? "Send message" : "Search"}
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <line x1="22" y1="2" x2="11" y2="13" />
           <polygon points="22 2 15 22 11 13 2 9 22 2" />
         </svg>
@@ -144,7 +314,9 @@ export function Thread() {
       <div className="thread-root thread-root-empty">
         <div className="thread-centered">
           <div className="grok-logo-container">
-            <span className="grok-logo-text">Index - Find someone with a prompt.</span>
+            <span className="grok-logo-text">
+              Index - Find someone with a prompt.
+            </span>
           </div>
           <div className="thread-footer thread-footer-centered">
             {composerForm}
@@ -181,10 +353,7 @@ export function Thread() {
       </div>
 
       {/* Input Bar Footer */}
-      <div className="thread-footer">
-        {composerForm}
-      </div>
+      <div className="thread-footer">{composerForm}</div>
     </div>
   );
 }
-
