@@ -1,7 +1,20 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import Image from "next/image";
+import user1Image from "../app/user1.png";
+import user2Image from "../app/user2.png";
+import user3Image from "../app/user3.jpg";
 import "./thread.css";
+
+interface ProfileData {
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  website?: string;
+  email?: string;
+  bio?: string;
+}
 
 interface Message {
   id: string;
@@ -9,12 +22,41 @@ interface Message {
   content: string;
   thinkingText?: string;
   thinkingActive?: boolean;
+  profiles?: ProfileData[];
 }
 
 type ChatPayloadMessage = {
   role: Message["role"];
   content: string;
 };
+
+// Static profile data for testing
+const staticProfiles: ProfileData[] = [
+  {
+    firstName: "Umesh",
+    lastName: "Khanna",
+    username: "umeshkhanna",
+    website: "https://umeshkhanna.dev",
+    email: "umesh@example.com",
+    bio: "Full-stack developer passionate about building beautiful user experiences. Love working with React and TypeScript.",
+  },
+  {
+    firstName: "Joshua",
+    lastName: "Goon",
+    username: "joshuagoon",
+    website: "https://joshuagoon.io",
+    email: "joshua@example.com",
+    bio: "Product designer and entrepreneur. Currently building the next generation of design tools.",
+  },
+  {
+    firstName: "Elon",
+    lastName: "Musk",
+    username: "elonmusk",
+    website: "https://elonmusk.com",
+    email: "elon@example.com",
+    bio: "Data scientist and AI researcher. Exploring the intersection of machine learning and human creativity.",
+  },
+];
 
 export function Thread() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -24,6 +66,32 @@ export function Thread() {
   const messageIdCounterRef = useRef(0);
   const lastSubmissionTimeRef = useRef(0);
   const lastSubmissionContentRef = useRef<string>("");
+  const populatedMessageIdsRef = useRef<Set<string>>(new Set());
+
+  // Populate static data when thinking finishes (fallback if stream handler doesn't populate)
+  useEffect(() => {
+    setMessages((prev) => {
+      let hasChanges = false;
+      const updated = prev.map((msg) => {
+        // If this is an assistant message that just finished thinking and has no profiles yet
+        if (
+          msg.role === "assistant" &&
+          !msg.thinkingActive &&
+          !msg.profiles &&
+          !populatedMessageIdsRef.current.has(msg.id)
+        ) {
+          hasChanges = true;
+          populatedMessageIdsRef.current.add(msg.id);
+          return {
+            ...msg,
+            profiles: staticProfiles,
+          };
+        }
+        return msg;
+      });
+      return hasChanges ? updated : prev;
+    });
+  }, [messages]);
 
   const streamAssistantResponse = useCallback(
     async ({
@@ -142,6 +210,7 @@ export function Thread() {
                 updateAssistantMessage((msg) => ({
                   ...msg,
                   thinkingActive: false,
+                  profiles: staticProfiles, // Populate with static data when thinking ends
                 }));
                 break;
               }
@@ -185,11 +254,13 @@ export function Thread() {
           ...msg,
           content: fallbackMessage,
           thinkingActive: false,
+          profiles: msg.profiles || staticProfiles, // Populate if not already populated
         }));
       } finally {
         updateAssistantMessage((msg) => ({
           ...msg,
           thinkingActive: false,
+          profiles: msg.profiles || staticProfiles, // Populate if not already populated
         }));
         isSubmittingRef.current = false;
       }
@@ -238,7 +309,7 @@ export function Thread() {
         role: "assistant",
         content: "",
         thinkingActive: true,
-        thinkingText: "Connecting to Grok...",
+        thinkingText: "Working on it...",
       };
 
       setMessages((prev) => [...prev, userMessage, assistantMessage]);
@@ -297,23 +368,6 @@ export function Thread() {
 
   const composerForm = (
     <form ref={formRef} onSubmit={handleFormSubmit} className="composer-root">
-      <button
-        type="button"
-        className="composer-icon-button"
-        aria-label="Attach file"
-      >
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-        </svg>
-      </button>
-
       <textarea
         className="composer-input"
         placeholder="Who are you looking for?"
@@ -352,7 +406,7 @@ export function Thread() {
         <div className="thread-centered">
           <div className="grok-logo-container">
             <span className="grok-logo-text">
-              Index - Find someone with a prompt.
+              Index - Find anyone with a prompt.
             </span>
           </div>
           <div className="thread-footer thread-footer-centered">
@@ -369,7 +423,7 @@ export function Thread() {
       {/* Grok Logo Header */}
       <div className="grok-header">
         <div className="grok-logo-container">
-          <span className="grok-logo-text">index</span>
+          <span className="grok-logo-text">Index</span>
         </div>
       </div>
 
@@ -384,26 +438,104 @@ export function Thread() {
               }
             >
               {message.role === "assistant" &&
-                (message.thinkingActive || message.thinkingText) && (
+                (message.thinkingActive || message.thinkingText) &&
+                !message.content && (
                   <div className="message-thinking" aria-live="polite">
-                    <div className="message-thinking-header">
-                      <span className="message-thinking-spinner" />
-                      <span className="message-thinking-label">
-                        {message.thinkingActive
-                          ? "Thinking"
-                          : "Thought process"}
-                      </span>
-                    </div>
-                    {message.thinkingText ? (
-                      <div className="message-thinking-text">
-                        {message.thinkingText}
-                      </div>
-                    ) : null}
+                    {message.thinkingText || "Thinking..."}
                   </div>
                 )}
-              <div className="message-content">
-                {message.content || (message.thinkingActive ? "..." : "")}
-              </div>
+              {message.content && (
+                <div className="message-content">
+                  {message.content}
+                </div>
+              )}
+              {message.role === "assistant" && (
+                <>
+                  {message.thinkingActive && (
+                    <div className="profile-cards-container">
+                      {/* Skeleton state when thinking */}
+                      <div className="profile-card profile-card-skeleton">
+                        <div className="profile-card-top">
+                          <div className="skeleton-profile-picture-large"></div>
+                        </div>
+                        <div className="profile-card-bottom">
+                          <div className="skeleton-line skeleton-field"></div>
+                          <div className="skeleton-line skeleton-field"></div>
+                          <div className="skeleton-line skeleton-field"></div>
+                          <div className="skeleton-line skeleton-field"></div>
+                          <div className="skeleton-line skeleton-bio"></div>
+                        </div>
+                      </div>
+                      <div className="profile-card profile-card-skeleton">
+                        <div className="profile-card-top">
+                          <div className="skeleton-profile-picture-large"></div>
+                        </div>
+                        <div className="profile-card-bottom">
+                          <div className="skeleton-line skeleton-field"></div>
+                          <div className="skeleton-line skeleton-field"></div>
+                          <div className="skeleton-line skeleton-field"></div>
+                          <div className="skeleton-line skeleton-field"></div>
+                          <div className="skeleton-line skeleton-bio"></div>
+                        </div>
+                      </div>
+                      <div className="profile-card profile-card-skeleton">
+                        <div className="profile-card-top">
+                          <div className="skeleton-profile-picture-large"></div>
+                        </div>
+                        <div className="profile-card-bottom">
+                          <div className="skeleton-line skeleton-field"></div>
+                          <div className="skeleton-line skeleton-field"></div>
+                          <div className="skeleton-line skeleton-field"></div>
+                          <div className="skeleton-line skeleton-field"></div>
+                          <div className="skeleton-line skeleton-bio"></div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {!message.thinkingActive && message.profiles && message.profiles.length > 0 && (
+                    <div className="profile-cards-container">
+                      {/* Actual profile data after loading */}
+                      {message.profiles.slice(0, 3).map((profile, index) => {
+                        const imageFiles = [user1Image, user2Image, user3Image];
+                        const imageSrc = imageFiles[index] || imageFiles[0];
+                        return (
+                        <div key={index} className="profile-card">
+                          {/* Top Half - Profile Picture */}
+                          <div className="profile-card-top">
+                            <div className="profile-picture-large">
+                              <Image
+                                src={imageSrc}
+                                alt={`${profile.firstName || ""} ${profile.lastName || ""}`.trim() || "Profile"}
+                                fill
+                                className="profile-image"
+                                style={{ objectFit: 'cover' }}
+                              />
+                            </div>
+                          </div>
+                          {/* Bottom Half - User Information */}
+                          <div className="profile-card-bottom">
+                            {(profile.firstName || profile.lastName) && (
+                              <div className="profile-name-line">
+                                {profile.firstName} {profile.lastName}
+                              </div>
+                            )}
+                            {profile.username && (
+                              <div className="profile-username-line">@{profile.username}</div>
+                            )}
+                            {profile.email && (
+                              <div className="profile-email-line">{profile.email}</div>
+                            )}
+                            {profile.bio && (
+                              <div className="profile-bio-line">{profile.bio}</div>
+                            )}
+                          </div>
+                        </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           ))}
         </div>
