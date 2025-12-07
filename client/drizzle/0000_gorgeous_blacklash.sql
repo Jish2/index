@@ -1,0 +1,33 @@
+-- Drop table and sequence if they exist (for idempotency)
+DROP TABLE IF EXISTS "users" CASCADE;
+DROP SEQUENCE IF EXISTS "users_id_seq" CASCADE;
+
+CREATE TABLE "users" (
+	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "users_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
+	"name" varchar(255) NOT NULL,
+	"email" varchar(255) NOT NULL,
+	"slackId" varchar(100),
+	"profilePic" text,
+	"twitter" varchar(100),
+	"linkedin" varchar(255),
+	"site" text,
+	"xUserId" varchar(50),
+	"xUsername" varchar(100),
+	"xDescription" text,
+	"xLocation" varchar(255),
+	"xUrl" text,
+	"xVerified" boolean DEFAULT false,
+	"xVerifiedType" varchar(50),
+	"xFollowersCount" integer DEFAULT 0,
+	"xFollowingCount" integer DEFAULT 0,
+	"xListedCount" integer DEFAULT 0,
+	"xTweetCount" integer DEFAULT 0,
+	"xCreatedAt" timestamp,
+	"derivedRole" varchar(100),
+	"derivedTopics" text[],
+	"derivedSummary" text,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"updatedAt" timestamp DEFAULT now() NOT NULL,
+	"lastRefreshedAt" timestamp,
+	CONSTRAINT "users_email_unique" UNIQUE("email")
+);
