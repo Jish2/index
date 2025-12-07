@@ -9,13 +9,15 @@
     "lint": "eslint",
     "db-push": "drizzle-kit push",
     "db-generate": "drizzle-kit push",
-    "db-migrate": "drizzle-kit migrate"
+    "db-migrate": "drizzle-kit migrate",
+    "fetch-x-users": "tsx scripts/fetch-x-users.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.77",
     "@assistant-ui/react": "^0.11.47",
     "@assistant-ui/react-ai-sdk": "^1.1.16",
     "@neondatabase/serverless": "^1.0.2",
+    "@pinecone-database/pinecone": "^3.0.0",
     "ai": "^5.0.108",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
