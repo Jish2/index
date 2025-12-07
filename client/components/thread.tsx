@@ -1,22 +1,24 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import user1Image from "../app/user1.png";
-import user2Image from "../app/user2.png";
-import user3Image from "../app/user3.jpg";
 import { useChatReset } from "./chat-reset-context";
 import "./thread.css";
 
 interface ProfileData {
-  firstName?: string;
-  lastName?: string;
-  username?: string;
-  website?: string;
-  email?: string;
-  bio?: string;
+  id: string;
+  name?: string | null;
+  username?: string | null;
+  location?: string | null;
+  followers?: number | null;
+  derivedRole?: string | null;
+  derivedTopics?: string[] | null;
+  summary?: string | null;
+  profileImageUrl?: string | null;
+  similarity?: number | null;
+  url?: string | null;
 }
 
 interface Message {
@@ -33,75 +35,211 @@ type ChatPayloadMessage = {
   content: string;
 };
 
-// Static profile data for testing
-const staticProfiles: ProfileData[] = [
-  {
-    firstName: "Umesh",
-    lastName: "Khanna",
-    username: "umeshkhanna",
-    website: "https://umeshkhanna.dev",
-    email: "umesh@example.com",
-    bio: "Full-stack developer passionate about building beautiful user experiences. Love working with React and TypeScript.",
-  },
-  {
-    firstName: "Joshua",
-    lastName: "Goon",
-    username: "joshuagoon",
-    website: "https://joshuagoon.io",
-    email: "joshua@example.com",
-    bio: "Product designer and entrepreneur. Currently building the next generation of design tools.",
-  },
-  {
-    firstName: "Elon",
-    lastName: "Musk",
-    username: "elonmusk",
-    website: "https://elonmusk.com",
-    email: "elon@example.com",
-    bio: "Data scientist and AI researcher. Exploring the intersection of machine learning and human creativity.",
-  },
-];
-
-const profileImages = [user1Image, user2Image, user3Image];
-
 interface ProfileCardProps {
   profile: ProfileData;
   index: number;
 }
 
-function ProfileCard({ profile, index }: ProfileCardProps) {
-  const imageSrc = profileImages[index] || profileImages[0];
-  const altText =
-    `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || "Profile";
+function formatFollowers(value?: number | null) {
+  if (value == null) return null;
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  }
+  if (value >= 1_000) {
+    return `${(value / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
+  }
+  return value.toString();
+}
+
+function getInitials(name?: string | null, username?: string | null) {
+  const source = name?.trim() || username?.trim();
+  if (!source) return "??";
+
+  const parts = source.split(" ").filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  }
+  return source.slice(0, 2).toUpperCase();
+}
+
+function ProfileCard({ profile }: ProfileCardProps) {
+  const initials = useMemo(
+    () => getInitials(profile.name, profile.username),
+    [profile.name, profile.username]
+  );
+  const topics = profile.derivedTopics?.slice(0, 4) ?? [];
+  const followerLabel = formatFollowers(profile.followers);
+  const relevance =
+    profile.similarity != null
+      ? `${Math.round(profile.similarity * 100)}%`
+      : null;
+
+  const cacheKey = profile.username || profile.id;
+  const [imageSrc, setImageSrc] = useState<string | null>(
+    profile.profileImageUrl ?? null
+  );
+  const [hasTriedFetching, setHasTriedFetching] = useState(
+    Boolean(profile.profileImageUrl)
+  );
+
+  useEffect(() => {
+    setImageSrc(profile.profileImageUrl ?? null);
+    setHasTriedFetching(Boolean(profile.profileImageUrl));
+  }, [profile.profileImageUrl, cacheKey]);
+
+  useEffect(() => {
+    if (imageSrc || hasTriedFetching) {
+      return;
+    }
+    if (!cacheKey) {
+      setHasTriedFetching(true);
+      return;
+    }
+
+    let isCancelled = false;
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        const params = profile.username
+          ? `username=${encodeURIComponent(profile.username)}`
+          : `userId=${encodeURIComponent(profile.id)}`;
+        const response = await fetch(`/api/profile-image?${params}`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch profile image");
+        }
+        const data = (await response.json()) as {
+          profileImageUrl?: string | null;
+        };
+        if (!isCancelled) {
+          setImageSrc(data.profileImageUrl ?? null);
+          setHasTriedFetching(true);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          console.error("Profile image fetch failed:", error);
+          setHasTriedFetching(true);
+        }
+      }
+    })();
+
+    return () => {
+      isCancelled = true;
+      controller.abort();
+    };
+  }, [cacheKey, imageSrc, hasTriedFetching, profile.id, profile.username]);
+
+  const hasImage = Boolean(imageSrc);
 
   return (
     <div className="profile-card">
       <div className="profile-card-top">
         <div className="profile-picture-large">
-          <Image
-            src={imageSrc}
-            alt={altText}
-            fill
-            className="profile-image"
-            style={{ objectFit: "cover" }}
-          />
+          {hasImage ? (
+            <Image
+              src={imageSrc as string}
+              alt={profile.name ?? profile.username ?? "Profile"}
+              fill
+              className="profile-image"
+              style={{ objectFit: "cover" }}
+              unoptimized
+            />
+          ) : (
+            <div className="profile-placeholder">
+              <span>{initials}</span>
+            </div>
+          )}
         </div>
       </div>
       <div className="profile-card-bottom">
-        {(profile.firstName || profile.lastName) && (
+        {profile.name && (
           <div className="profile-name-line">
-            {profile.firstName} {profile.lastName}
+            {profile.name}
+            {profile.derivedRole && (
+              <span className="profile-role-pill">{profile.derivedRole}</span>
+            )}
           </div>
         )}
         {profile.username && (
           <div className="profile-username-line">@{profile.username}</div>
         )}
-        {profile.email && (
-          <div className="profile-email-line">{profile.email}</div>
+        <div className="profile-meta-grid">
+          {profile.location && (
+            <div className="profile-meta">
+              <span className="profile-meta-label">Location</span>
+              <span>{profile.location}</span>
+            </div>
+          )}
+          {followerLabel && (
+            <div className="profile-meta">
+              <span className="profile-meta-label">Followers</span>
+              <span>{followerLabel}</span>
+            </div>
+          )}
+          {relevance && (
+            <div className="profile-meta">
+              <span className="profile-meta-label">Relevance</span>
+              <span>{relevance}</span>
+            </div>
+          )}
+        </div>
+        {topics.length > 0 && (
+          <div className="profile-topics">
+            {topics.map((topic) => (
+              <span key={topic}>{topic}</span>
+            ))}
+          </div>
         )}
-        {profile.bio && <div className="profile-bio-line">{profile.bio}</div>}
+        {profile.summary && (
+          <div className="profile-bio-line">{profile.summary}</div>
+        )}
+        {profile.url && (
+          <a
+            className="profile-link"
+            href={profile.url}
+            target="_blank"
+            rel="noreferrer"
+          >
+            View profile
+          </a>
+        )}
       </div>
     </div>
   );
+}
+
+type PeopleToolResult = {
+  xUserId: string;
+  username: string | null;
+  name: string | null;
+  location: string | null;
+  derivedRole: string | null;
+  derivedTopics: string[] | null;
+  followers: number | null;
+  similarity: number | null;
+  summary: string | null;
+  profileImageUrl: string | null;
+  url: string | null;
+};
+
+function mapToolResultsToProfiles(results: PeopleToolResult[]): ProfileData[] {
+  return results.map((result) => ({
+    id: result.xUserId,
+    name: result.name,
+    username: result.username,
+    location: result.location,
+    derivedRole: result.derivedRole,
+    derivedTopics: result.derivedTopics,
+    followers: result.followers,
+    similarity: result.similarity,
+    summary: result.summary,
+    profileImageUrl: result.profileImageUrl,
+    url:
+      result.url ??
+      (result.username ? `https://x.com/${result.username}` : null),
+  }));
 }
 
 export function Thread() {
@@ -129,31 +267,6 @@ export function Thread() {
       });
     }
   }, [chatReset]);
-
-  // Populate static data when thinking finishes (fallback if stream handler doesn't populate)
-  useEffect(() => {
-    setMessages((prev) => {
-      let hasChanges = false;
-      const updated = prev.map((msg) => {
-        // If this is an assistant message that just finished thinking and has no profiles yet
-        if (
-          msg.role === "assistant" &&
-          !msg.thinkingActive &&
-          !msg.profiles &&
-          !populatedMessageIdsRef.current.has(msg.id)
-        ) {
-          hasChanges = true;
-          populatedMessageIdsRef.current.add(msg.id);
-          return {
-            ...msg,
-            profiles: staticProfiles,
-          };
-        }
-        return msg;
-      });
-      return hasChanges ? updated : prev;
-    });
-  }, [messages]);
 
   const streamAssistantResponse = useCallback(
     async ({
@@ -272,8 +385,29 @@ export function Thread() {
                 updateAssistantMessage((msg) => ({
                   ...msg,
                   thinkingActive: false,
-                  profiles: staticProfiles, // Populate with static data when thinking ends
                 }));
+                break;
+              }
+              case "data-tool-people": {
+                const data = parsed.data;
+                if (
+                  data &&
+                  Array.isArray((data as { results?: unknown }).results)
+                ) {
+                  const profiles = mapToolResultsToProfiles(
+                    (data as { results: PeopleToolResult[] }).results
+                  );
+                  updateAssistantMessage((msg) => {
+                    if (populatedMessageIdsRef.current.has(msg.id)) {
+                      return { ...msg, profiles };
+                    }
+                    populatedMessageIdsRef.current.add(msg.id);
+                    return {
+                      ...msg,
+                      profiles,
+                    };
+                  });
+                }
                 break;
               }
               case "error": {
@@ -316,13 +450,11 @@ export function Thread() {
           ...msg,
           content: fallbackMessage,
           thinkingActive: false,
-          profiles: msg.profiles || staticProfiles, // Populate if not already populated
         }));
       } finally {
         updateAssistantMessage((msg) => ({
           ...msg,
           thinkingActive: false,
-          profiles: msg.profiles || staticProfiles, // Populate if not already populated
         }));
         isSubmittingRef.current = false;
       }
@@ -506,64 +638,20 @@ export function Thread() {
                   </ReactMarkdown>
                 </div>
               )}
-              {message.role === "assistant" && (
-                <>
-                  {message.thinkingActive && (
-                    <div className="profile-cards-container">
-                      {/* Skeleton state when thinking */}
-                      <div className="profile-card profile-card-skeleton">
-                        <div className="profile-card-top">
-                          <div className="skeleton-profile-picture-large"></div>
-                        </div>
-                        <div className="profile-card-bottom">
-                          <div className="skeleton-line skeleton-field"></div>
-                          <div className="skeleton-line skeleton-field"></div>
-                          <div className="skeleton-line skeleton-field"></div>
-                          <div className="skeleton-line skeleton-field"></div>
-                          <div className="skeleton-line skeleton-bio"></div>
-                        </div>
-                      </div>
-                      <div className="profile-card profile-card-skeleton">
-                        <div className="profile-card-top">
-                          <div className="skeleton-profile-picture-large"></div>
-                        </div>
-                        <div className="profile-card-bottom">
-                          <div className="skeleton-line skeleton-field"></div>
-                          <div className="skeleton-line skeleton-field"></div>
-                          <div className="skeleton-line skeleton-field"></div>
-                          <div className="skeleton-line skeleton-field"></div>
-                          <div className="skeleton-line skeleton-bio"></div>
-                        </div>
-                      </div>
-                      <div className="profile-card profile-card-skeleton">
-                        <div className="profile-card-top">
-                          <div className="skeleton-profile-picture-large"></div>
-                        </div>
-                        <div className="profile-card-bottom">
-                          <div className="skeleton-line skeleton-field"></div>
-                          <div className="skeleton-line skeleton-field"></div>
-                          <div className="skeleton-line skeleton-field"></div>
-                          <div className="skeleton-line skeleton-field"></div>
-                          <div className="skeleton-line skeleton-bio"></div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {!message.thinkingActive &&
-                    message.profiles &&
-                    message.profiles.length > 0 && (
-                      <div className="profile-cards-container">
-                        {message.profiles.slice(0, 3).map((profile, index) => (
-                          <ProfileCard
-                            key={`${profile.username ?? "profile"}-${index}`}
-                            profile={profile}
-                            index={index}
-                          />
-                        ))}
-                      </div>
-                    )}
-                </>
-              )}
+              {message.role === "assistant" &&
+                !message.thinkingActive &&
+                message.profiles &&
+                message.profiles.length > 0 && (
+                  <div className="profile-cards-container">
+                    {message.profiles.slice(0, 3).map((profile, index) => (
+                      <ProfileCard
+                        key={`${profile.id}-${index}`}
+                        profile={profile}
+                        index={index}
+                      />
+                    ))}
+                  </div>
+                )}
             </div>
           ))}
         </div>

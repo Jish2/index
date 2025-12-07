@@ -72,4 +72,3 @@ export const messageFetchProgressTable = pgTable(
     statusIdx: index("message_fetch_progress_status_idx").on(table.status),
   })
 );
-

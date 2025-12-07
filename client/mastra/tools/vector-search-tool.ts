@@ -18,8 +18,6 @@ interface PineconeMatch {
   metadata?: Record<string, unknown>;
 }
 
-type QueryResult<T> = T[] | { rows?: T[] };
-
 interface UserRecord {
   xUserId: string;
   xUsername: string | null;
@@ -34,17 +32,32 @@ interface UserRecord {
   profilePic: string | null;
 }
 
-function toRows<T>(payload: QueryResult<T>): T[] {
-  return Array.isArray(payload) ? payload : (payload.rows ?? []);
+function toRows<T>(payload: unknown): T[] {
+  if (Array.isArray(payload)) {
+    return payload as T[];
+  }
+
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "rows" in payload &&
+    Array.isArray((payload as { rows?: unknown }).rows)
+  ) {
+    return ((payload as { rows?: T[] }).rows ?? []) as T[];
+  }
+
+  return [];
 }
 
-async function fetchDbUsers(sql: ReturnType<typeof neon>, ids: string[]) {
+type SqlClient = Pick<ReturnType<typeof neon>, "query">;
+
+async function fetchDbUsers(sql: SqlClient, ids: string[]) {
   if (ids.length === 0) {
     return new Map<string, UserRecord>();
   }
 
   const rows = toRows<UserRecord>(
-    await sql.query<UserRecord>(
+    await sql.query(
       `
       SELECT 
         "xUserId",
@@ -131,7 +144,7 @@ export const vectorSearchTool = createTool({
       })
     ),
   }),
-  execute: async ({ context }) => {
+  execute: async ({ context, writer }) => {
     const pineconeApiKey = process.env.PINECONE_API_KEY;
     const pineconeHost =
       process.env.PINECONE_INDEX_HOST || DEFAULT_PINECONE_HOST;
@@ -244,6 +257,14 @@ export const vectorSearchTool = createTool({
         url,
       };
     });
+
+    if (writer) {
+      await writer.custom({
+        type: "data-tool-people",
+        id: "vector-search-results",
+        data: { results },
+      });
+    }
 
     return { results };
   },

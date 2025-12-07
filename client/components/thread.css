@@ -467,17 +467,44 @@
   object-fit: cover;
 }
 
+.profile-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1f3b73, #171717);
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
 .profile-name-line {
   font-size: 18px;
   font-weight: 600;
   color: #0d0d0d;
   line-height: 1.4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 @media (prefers-color-scheme: dark) {
   .profile-name-line {
     color: #e5e5e5;
   }
+}
+
+.profile-role-pill {
+  font-size: 12px;
+  font-weight: 500;
+  color: #4a9eff;
+  background: rgba(74, 158, 255, 0.15);
+  border: 1px solid rgba(74, 158, 255, 0.4);
+  border-radius: 999px;
+  padding: 2px 8px;
 }
 
 .profile-username-line {
@@ -509,7 +536,7 @@
   font-size: 14px;
   color: #666666;
   line-height: 1.5;
-  margin-top: 4px;
+  margin-top: 12px;
   word-break: break-word;
 }
 
@@ -556,6 +583,68 @@
   .profile-email {
     color: #666666;
   }
+}
+
+.profile-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.profile-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-meta-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #999999;
+}
+
+@media (prefers-color-scheme: light) {
+  .profile-meta-label {
+    color: #777777;
+  }
+}
+
+.profile-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.profile-topics span {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(74, 158, 255, 0.15);
+  border: 1px solid rgba(74, 158, 255, 0.4);
+  color: #4a9eff;
+}
+
+.profile-link {
+  margin-top: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #4a9eff;
+  text-decoration: none;
+}
+
+.profile-link::after {
+  content: "↗";
+  font-size: 12px;
+}
+
+.profile-link:hover {
+  text-decoration: underline;
 }
 
 /* Skeleton State */

@@ -28,14 +28,21 @@ const MAX_BATCHES = process.env.MESSAGE_EMBED_MAX_BATCHES
   ? Number(process.env.MESSAGE_EMBED_MAX_BATCHES)
   : undefined;
 
-function toRows<T extends Record<string, unknown>>(
-  payload:
-    | Array<Record<string, unknown>>
-    | { rows?: Array<Record<string, unknown>> }
-): T[] {
-  return Array.isArray(payload)
-    ? (payload as T[])
-    : ((payload.rows ?? []) as T[]);
+function toRows<T>(payload: unknown): T[] {
+  if (Array.isArray(payload)) {
+    return payload as T[];
+  }
+
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "rows" in payload &&
+    Array.isArray((payload as { rows?: unknown }).rows)
+  ) {
+    return ((payload as { rows?: T[] }).rows ?? []) as T[];
+  }
+
+  return [];
 }
 
 function buildEmbeddingText(row: MessageRow) {

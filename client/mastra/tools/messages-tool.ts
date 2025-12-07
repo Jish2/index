@@ -4,8 +4,6 @@ import { neon } from "@neondatabase/serverless";
 
 const DEFAULT_LIMIT = 5;
 
-type QueryResult<T> = T[] | { rows?: T[] };
-
 interface MessageRow {
   tweet_id: string;
   text: string;
@@ -18,8 +16,21 @@ interface MessageRow {
   name: string | null;
 }
 
-function toRows<T>(payload: QueryResult<T>): T[] {
-  return Array.isArray(payload) ? payload : (payload.rows ?? []);
+function toRows<T>(payload: unknown): T[] {
+  if (Array.isArray(payload)) {
+    return payload as T[];
+  }
+
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "rows" in payload &&
+    Array.isArray((payload as { rows?: unknown }).rows)
+  ) {
+    return ((payload as { rows?: T[] }).rows ?? []) as T[];
+  }
+
+  return [];
 }
 
 function toTweet(row: MessageRow) {
@@ -90,7 +101,7 @@ export const messagesTool = createTool({
     let resolvedXUserId = xUserId ?? null;
     if (!resolvedXUserId && username) {
       const rows = toRows<{ xUserId: string }>(
-        await sql.query<{ xUserId: string }>(
+        await sql.query(
           `
           SELECT "xUserId"
           FROM "users"
@@ -111,7 +122,7 @@ export const messagesTool = createTool({
     }
 
     const rows = toRows<MessageRow>(
-      await sql.query<MessageRow>(
+      await sql.query(
         `
         SELECT
           m."tweet_id",
