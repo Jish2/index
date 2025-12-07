@@ -1,0 +1,40 @@
+/* --- Page Container --- */
+.grok-container {
+  height: 100vh;
+  padding: 0;
+  background: #141414; /* Dark theme primary background */
+  color: #e5e5e5; /* Dark theme text color */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+/* Light theme support */
+@media (prefers-color-scheme: light) {
+  .grok-container {
+    background: #FDFDFD; /* Light theme primary background */
+    color: #0d0d0d; /* Light theme text color */
+  }
+}
+
+.grok-inner {
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Light theme for inner container */
+@media (prefers-color-scheme: light) {
+  .grok-inner {
+    background: transparent;
+  }
+}
