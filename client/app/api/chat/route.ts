@@ -18,15 +18,17 @@ import { toAISdkFormat } from "@mastra/ai-sdk";
 import { convertMessages } from "@mastra/core/agent";
 import { createUIMessageStreamResponse } from "ai";
 
-const weatherAgent = mastra.getAgent("weatherAgent");
+const personFinderAgent = mastra.getAgent("personFinderAgent");
+const THREAD_ID = "person-finder-thread";
+const RESOURCE_ID = "person-finder-chat";
 
 export async function POST(req: Request) {
   const { messages } = await req.json();
 
-  const stream = await weatherAgent.stream(messages, {
+  const stream = await personFinderAgent.stream(messages, {
     memory: {
-      thread: "example-user-id",
-      resource: "weather-chat",
+      thread: THREAD_ID,
+      resource: RESOURCE_ID,
     },
   });
 
@@ -36,10 +38,10 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
-  const memory = await weatherAgent.getMemory();
+  const memory = await personFinderAgent.getMemory();
   const response = await memory?.query({
-    threadId: "example-user-id",
-    resourceId: "weather-chat",
+    threadId: THREAD_ID,
+    resourceId: RESOURCE_ID,
   });
 
   const uiMessages = convertMessages(response?.uiMessages ?? []).to("AIV5.UI");
