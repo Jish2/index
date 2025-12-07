@@ -61,6 +61,49 @@ const staticProfiles: ProfileData[] = [
   },
 ];
 
+const profileImages = [user1Image, user2Image, user3Image];
+
+interface ProfileCardProps {
+  profile: ProfileData;
+  index: number;
+}
+
+function ProfileCard({ profile, index }: ProfileCardProps) {
+  const imageSrc = profileImages[index] || profileImages[0];
+  const altText =
+    `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || "Profile";
+
+  return (
+    <div className="profile-card">
+      <div className="profile-card-top">
+        <div className="profile-picture-large">
+          <Image
+            src={imageSrc}
+            alt={altText}
+            fill
+            className="profile-image"
+            style={{ objectFit: "cover" }}
+          />
+        </div>
+      </div>
+      <div className="profile-card-bottom">
+        {(profile.firstName || profile.lastName) && (
+          <div className="profile-name-line">
+            {profile.firstName} {profile.lastName}
+          </div>
+        )}
+        {profile.username && (
+          <div className="profile-username-line">@{profile.username}</div>
+        )}
+        {profile.email && (
+          <div className="profile-email-line">{profile.email}</div>
+        )}
+        {profile.bio && <div className="profile-bio-line">{profile.bio}</div>}
+      </div>
+    </div>
+  );
+}
+
 export function Thread() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -510,57 +553,13 @@ export function Thread() {
                     message.profiles &&
                     message.profiles.length > 0 && (
                       <div className="profile-cards-container">
-                        {/* Actual profile data after loading */}
-                        {message.profiles.slice(0, 3).map((profile, index) => {
-                          const imageFiles = [
-                            user1Image,
-                            user2Image,
-                            user3Image,
-                          ];
-                          const imageSrc = imageFiles[index] || imageFiles[0];
-                          return (
-                            <div key={index} className="profile-card">
-                              {/* Top Half - Profile Picture */}
-                              <div className="profile-card-top">
-                                <div className="profile-picture-large">
-                                  <Image
-                                    src={imageSrc}
-                                    alt={
-                                      `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
-                                      "Profile"
-                                    }
-                                    fill
-                                    className="profile-image"
-                                    style={{ objectFit: "cover" }}
-                                  />
-                                </div>
-                              </div>
-                              {/* Bottom Half - User Information */}
-                              <div className="profile-card-bottom">
-                                {(profile.firstName || profile.lastName) && (
-                                  <div className="profile-name-line">
-                                    {profile.firstName} {profile.lastName}
-                                  </div>
-                                )}
-                                {profile.username && (
-                                  <div className="profile-username-line">
-                                    @{profile.username}
-                                  </div>
-                                )}
-                                {profile.email && (
-                                  <div className="profile-email-line">
-                                    {profile.email}
-                                  </div>
-                                )}
-                                {profile.bio && (
-                                  <div className="profile-bio-line">
-                                    {profile.bio}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
+                        {message.profiles.slice(0, 3).map((profile, index) => (
+                          <ProfileCard
+                            key={`${profile.username ?? "profile"}-${index}`}
+                            profile={profile}
+                            index={index}
+                          />
+                        ))}
                       </div>
                     )}
                 </>
