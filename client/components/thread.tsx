@@ -463,7 +463,7 @@ export function Thread() {
   );
 
   const handleSend = useCallback(
-    (e?: React.FormEvent | React.KeyboardEvent) => {
+    (e?: React.FormEvent | React.KeyboardEvent, messageOverride?: string) => {
       if (e) {
         e.preventDefault();
         e.stopPropagation();
@@ -473,7 +473,7 @@ export function Thread() {
         return;
       }
 
-      const messageContent = input.trim();
+      const messageContent = (messageOverride || input).trim();
       if (!messageContent) {
         return;
       }
@@ -558,6 +558,12 @@ export function Thread() {
     [handleSend]
   );
 
+  const handleHintClick = useCallback((hintText: string) => {
+    setInput(hintText);
+    // Automatically send the message with the hint text
+    handleSend(undefined, hintText);
+  }, [handleSend]);
+
   const hasMessages = messages.length > 0;
 
   const composerForm = (
@@ -605,6 +611,22 @@ export function Thread() {
           </div>
           <div className="thread-footer thread-footer-centered">
             {composerForm}
+            <div className="hints-container">
+              <button
+                type="button"
+                className="hint-pill"
+                onClick={() => handleHintClick("SWE in Palo Alto who attended Stanford")}
+              >
+                SWE in Palo Alto who attended Stanford
+              </button>
+              <button
+                type="button"
+                className="hint-pill"
+                onClick={() => handleHintClick("Senior SWE with ML Background in Mountain View")}
+              >
+                Senior SWE with ML Background in Mountain View
+              </button>
+            </div>
           </div>
         </div>
       </div>
