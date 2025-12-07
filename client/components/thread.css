@@ -198,6 +198,11 @@
 .thread-footer-centered {
   border-top: none;
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
 }
 
 /* Light theme footer */
@@ -623,6 +628,56 @@
   margin-top: 4px;
 }
 
+/* Hints Container */
+.hints-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  max-width: 800px;
+  width: 100%;
+  padding: 0 16px;
+}
+
+.hint-pill {
+  background: #2a2a2a;
+  color: #e5e5e5;
+  border: 1px solid #3a3a3a;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.hint-pill:hover {
+  background: #3a3a3a;
+  border-color: #4a4a4a;
+  transform: translateY(-1px);
+}
+
+.hint-pill:active {
+  transform: translateY(0);
+}
+
+/* Light theme hints */
+@media (prefers-color-scheme: light) {
+  .hint-pill {
+    background: #f0f0f0;
+    color: #0d0d0d;
+    border-color: #e5e5e5;
+  }
+
+  .hint-pill:hover {
+    background: #e5e5e5;
+    border-color: #d0d0d0;
+  }
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .profile-cards-container {
@@ -633,5 +688,14 @@
   .profile-card {
     flex: 1 1 auto;
     width: 100%;
+  }
+
+  .hints-container {
+    padding: 0 8px;
+  }
+
+  .hint-pill {
+    font-size: 13px;
+    padding: 6px 14px;
   }
 }
