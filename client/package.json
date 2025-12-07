@@ -10,7 +10,9 @@
     "db-push": "drizzle-kit push",
     "db-generate": "drizzle-kit push",
     "db-migrate": "drizzle-kit migrate",
-    "fetch-x-users": "tsx scripts/fetch-x-users.ts"
+    "fetch-x-users": "tsx scripts/fetch-x-users.ts",
+    "collect-first-degree": "tsx scripts/collect-first-degree.ts",
+    "ingest-first-degree": "tsx scripts/ingest-first-degree.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.77",
