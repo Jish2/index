@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import Image from "next/image";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import user1Image from "../app/user1.png";
 import user2Image from "../app/user2.png";
 import user3Image from "../app/user3.jpg";
@@ -456,7 +458,9 @@ export function Thread() {
                 )}
               {message.content && (
                 <div className="message-content">
-                  {message.content}
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {message.content}
+                  </ReactMarkdown>
                 </div>
               )}
               {message.role === "assistant" && (
@@ -502,48 +506,63 @@ export function Thread() {
                       </div>
                     </div>
                   )}
-                  {!message.thinkingActive && message.profiles && message.profiles.length > 0 && (
-                    <div className="profile-cards-container">
-                      {/* Actual profile data after loading */}
-                      {message.profiles.slice(0, 3).map((profile, index) => {
-                        const imageFiles = [user1Image, user2Image, user3Image];
-                        const imageSrc = imageFiles[index] || imageFiles[0];
-                        return (
-                        <div key={index} className="profile-card">
-                          {/* Top Half - Profile Picture */}
-                          <div className="profile-card-top">
-                            <div className="profile-picture-large">
-                              <Image
-                                src={imageSrc}
-                                alt={`${profile.firstName || ""} ${profile.lastName || ""}`.trim() || "Profile"}
-                                fill
-                                className="profile-image"
-                                style={{ objectFit: 'cover' }}
-                              />
-                            </div>
-                          </div>
-                          {/* Bottom Half - User Information */}
-                          <div className="profile-card-bottom">
-                            {(profile.firstName || profile.lastName) && (
-                              <div className="profile-name-line">
-                                {profile.firstName} {profile.lastName}
+                  {!message.thinkingActive &&
+                    message.profiles &&
+                    message.profiles.length > 0 && (
+                      <div className="profile-cards-container">
+                        {/* Actual profile data after loading */}
+                        {message.profiles.slice(0, 3).map((profile, index) => {
+                          const imageFiles = [
+                            user1Image,
+                            user2Image,
+                            user3Image,
+                          ];
+                          const imageSrc = imageFiles[index] || imageFiles[0];
+                          return (
+                            <div key={index} className="profile-card">
+                              {/* Top Half - Profile Picture */}
+                              <div className="profile-card-top">
+                                <div className="profile-picture-large">
+                                  <Image
+                                    src={imageSrc}
+                                    alt={
+                                      `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
+                                      "Profile"
+                                    }
+                                    fill
+                                    className="profile-image"
+                                    style={{ objectFit: "cover" }}
+                                  />
+                                </div>
                               </div>
-                            )}
-                            {profile.username && (
-                              <div className="profile-username-line">@{profile.username}</div>
-                            )}
-                            {profile.email && (
-                              <div className="profile-email-line">{profile.email}</div>
-                            )}
-                            {profile.bio && (
-                              <div className="profile-bio-line">{profile.bio}</div>
-                            )}
-                          </div>
-                        </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                              {/* Bottom Half - User Information */}
+                              <div className="profile-card-bottom">
+                                {(profile.firstName || profile.lastName) && (
+                                  <div className="profile-name-line">
+                                    {profile.firstName} {profile.lastName}
+                                  </div>
+                                )}
+                                {profile.username && (
+                                  <div className="profile-username-line">
+                                    @{profile.username}
+                                  </div>
+                                )}
+                                {profile.email && (
+                                  <div className="profile-email-line">
+                                    {profile.email}
+                                  </div>
+                                )}
+                                {profile.bio && (
+                                  <div className="profile-bio-line">
+                                    {profile.bio}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                 </>
               )}
             </div>

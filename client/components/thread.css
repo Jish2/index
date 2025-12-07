@@ -10,7 +10,7 @@
 /* Light theme support */
 @media (prefers-color-scheme: light) {
   .thread-root {
-    background: #FDFDFD; /* Light theme primary background */
+    background: #fdfdfd; /* Light theme primary background */
     color: #0d0d0d; /* Light theme text color */
   }
 }
@@ -59,11 +59,11 @@
   .grok-logo-icon {
     border-color: #0d0d0d;
   }
-  
+
   .grok-logo-icon::after {
     background: #0d0d0d;
   }
-  
+
   .grok-logo-text {
     color: #0d0d0d;
   }
@@ -148,17 +148,43 @@
     background: #e5e5e5; /* Light grey bubble background */
     color: #0d0d0d; /* Light theme */
   }
-  
+
   .message-assistant .message-content {
     color: #0d0d0d; /* Light theme */
   }
 }
 
 .message-content {
-  white-space: pre-wrap;
+  white-space: normal;
   word-wrap: break-word;
-  line-height: 1.6;
+  line-height: 1.65;
   font-size: 15px;
+}
+
+.message-content p {
+  margin: 0 0 12px 0;
+}
+
+.message-content p:last-child {
+  margin-bottom: 0;
+}
+
+.message-content ul,
+.message-content ol {
+  margin: 0 0 12px 22px;
+  padding: 0;
+}
+
+.message-content li {
+  margin: 0 0 6px 0;
+}
+
+.message-content h1,
+.message-content h2,
+.message-content h3,
+.message-content h4 {
+  margin: 0 0 12px 0;
+  font-weight: 600;
 }
 
 .thread-footer {
@@ -189,7 +215,9 @@
   border: 1px solid #2a2a2a !important; /* Dark theme border */
   border-radius: 28px !important;
   padding: 12px 16px;
-  transition: border-color 0.2s, background-color 0.2s;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s;
   max-width: 800px;
   width: 100%;
 }
@@ -201,10 +229,10 @@
 /* Light theme composer */
 @media (prefers-color-scheme: light) {
   .composer-root {
-    background: #F8F8F8 !important; /* Light theme input background */
+    background: #f8f8f8 !important; /* Light theme input background */
     border: 1px solid #e5e5e5 !important; /* Light theme border */
   }
-  
+
   .composer-root:focus-within {
     border-color: #4a9eff !important;
   }
@@ -258,7 +286,7 @@
   .composer-input {
     color: #0d0d0d !important; /* Light theme */
   }
-  
+
   .composer-input::placeholder {
     color: #999; /* Light theme placeholder */
   }
@@ -286,7 +314,7 @@
   .grok-version-selector {
     color: #0d0d0d;
   }
-  
+
   .grok-version-selector:hover {
     background: rgba(0, 0, 0, 0.05);
   }
@@ -374,7 +402,7 @@
     background: #ffffff;
     border-color: #e5e5e5;
   }
-  
+
   .profile-card:hover {
     border-color: #4a9eff;
   }
@@ -386,7 +414,7 @@
     background: #1a1a1a;
     border-color: #2a2a2a;
   }
-  
+
   .profile-card:hover {
     border-color: #4a9eff;
   }
@@ -530,14 +558,14 @@
   }
 }
 
-
 /* Skeleton State */
 .profile-card-skeleton {
   animation: pulse 1.5s ease-in-out infinite;
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -601,11 +629,9 @@
     flex-direction: column;
     flex-wrap: nowrap;
   }
-  
+
   .profile-card {
     flex: 1 1 auto;
     width: 100%;
   }
 }
-
-
