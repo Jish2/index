@@ -40,6 +40,23 @@ interface ProfileCardProps {
   index: number;
 }
 
+function extractThinkingFromContent(content: string) {
+  const matches = [
+    ...content.matchAll(/<thinking>([\s\S]*?)(?:<\/thinking>|$)/gi),
+  ];
+  return matches
+    .map((match) => match[1]?.trim())
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function stripThinkingFromContent(content: string) {
+  return content
+    .replace(/<thinking>[\s\S]*?(<\/thinking>|$)/gi, "")
+    .replace(/<\/?thinking>/gi, "")
+    .trim();
+}
+
 function formatFollowers(value?: number | null) {
   if (value == null) return null;
   if (value >= 1_000_000) {
@@ -62,6 +79,16 @@ function getInitials(name?: string | null, username?: string | null) {
   return source.slice(0, 2).toUpperCase();
 }
 
+function getProfileAvatarUrl(profile: ProfileData) {
+  if (profile.profileImageUrl) {
+    return profile.profileImageUrl;
+  }
+  if (profile.username) {
+    return `https://unavatar.io/x/${encodeURIComponent(profile.username)}`;
+  }
+  return null;
+}
+
 function ProfileCard({ profile }: ProfileCardProps) {
   const initials = useMemo(
     () => getInitials(profile.name, profile.username),
@@ -74,64 +101,17 @@ function ProfileCard({ profile }: ProfileCardProps) {
       ? `${Math.round(profile.similarity * 100)}%`
       : null;
 
-  const cacheKey = profile.username || profile.id;
-  const [imageSrc, setImageSrc] = useState<string | null>(
-    profile.profileImageUrl ?? null
+  const avatarUrl = useMemo(
+    () => getProfileAvatarUrl(profile),
+    [profile.profileImageUrl, profile.username]
   );
-  const [hasTriedFetching, setHasTriedFetching] = useState(
-    Boolean(profile.profileImageUrl)
-  );
+  const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
-    setImageSrc(profile.profileImageUrl ?? null);
-    setHasTriedFetching(Boolean(profile.profileImageUrl));
-  }, [profile.profileImageUrl, cacheKey]);
+    setImageFailed(false);
+  }, [avatarUrl]);
 
-  useEffect(() => {
-    if (imageSrc || hasTriedFetching) {
-      return;
-    }
-    if (!cacheKey) {
-      setHasTriedFetching(true);
-      return;
-    }
-
-    let isCancelled = false;
-    const controller = new AbortController();
-
-    (async () => {
-      try {
-        const params = profile.username
-          ? `username=${encodeURIComponent(profile.username)}`
-          : `userId=${encodeURIComponent(profile.id)}`;
-        const response = await fetch(`/api/profile-image?${params}`, {
-          signal: controller.signal,
-        });
-        if (!response.ok) {
-          throw new Error("Failed to fetch profile image");
-        }
-        const data = (await response.json()) as {
-          profileImageUrl?: string | null;
-        };
-        if (!isCancelled) {
-          setImageSrc(data.profileImageUrl ?? null);
-          setHasTriedFetching(true);
-        }
-      } catch (error) {
-        if (!isCancelled) {
-          console.error("Profile image fetch failed:", error);
-          setHasTriedFetching(true);
-        }
-      }
-    })();
-
-    return () => {
-      isCancelled = true;
-      controller.abort();
-    };
-  }, [cacheKey, imageSrc, hasTriedFetching, profile.id, profile.username]);
-
-  const hasImage = Boolean(imageSrc);
+  const hasImage = Boolean(avatarUrl) && !imageFailed;
 
   return (
     <div className="profile-card">
@@ -139,12 +119,13 @@ function ProfileCard({ profile }: ProfileCardProps) {
         <div className="profile-picture-large">
           {hasImage ? (
             <Image
-              src={imageSrc as string}
+              src={avatarUrl as string}
               alt={profile.name ?? profile.username ?? "Profile"}
               fill
               className="profile-image"
               style={{ objectFit: "cover" }}
               unoptimized
+              onError={() => setImageFailed(true)}
             />
           ) : (
             <div className="profile-placeholder">
@@ -568,27 +549,6 @@ export function Thread() {
   );
 
   const hasMessages = messages.length > 0;
-  const githubLink = (
-    <a
-      className="github-link"
-      href="https://github.com/jish2/index"
-      target="_blank"
-      rel="noreferrer noopener"
-      aria-label="Open the Index project on GitHub"
-      title="View the project on GitHub"
-    >
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        role="img"
-        aria-hidden="true"
-      >
-        <path d="M12 .5C5.648.5.5 5.648.5 12c0 5.086 3.292 9.389 7.865 10.909.575.107.785-.25.785-.556 0-.274-.01-1-.015-1.962-3.2.696-3.877-1.543-3.877-1.543-.523-1.329-1.278-1.684-1.278-1.684-1.045-.714.08-.699.08-.699 1.156.081 1.765 1.188 1.765 1.188 1.029 1.763 2.7 1.254 3.36.959.104-.746.403-1.254.732-1.543-2.554-.29-5.238-1.277-5.238-5.684 0-1.256.448-2.284 1.182-3.088-.118-.29-.512-1.458.112-3.04 0 0 .964-.309 3.162 1.179a10.98 10.98 0 0 1 5.756 0c2.197-1.488 3.16-1.18 3.16-1.18.626 1.583.232 2.752.114 3.042.736.804 1.182 1.832 1.182 3.088 0 4.419-2.69 5.39-5.254 5.675.414.357.783 1.062.783 2.142 0 1.546-.014 2.792-.014 3.172 0 .309.208.67.79.555C20.21 21.384 23.5 17.084 23.5 12c0-6.352-5.148-11.5-11.5-11.5Z" />
-      </svg>
-    </a>
-  );
 
   const composerForm = (
     <form ref={formRef} onSubmit={handleFormSubmit} className="composer-root">
@@ -627,7 +587,6 @@ export function Thread() {
     // Centered layout when no messages
     return (
       <div className="thread-root thread-root-empty">
-        {githubLink}
         <div className="thread-centered">
           <div className="grok-logo-container">
             <span className="grok-logo-text">
@@ -667,7 +626,6 @@ export function Thread() {
   // Normal layout when there are messages - centered like Grok
   return (
     <div className="thread-root thread-root-with-messages">
-      {githubLink}
       {/* Messages Area - Centered */}
       <div className="thread-viewport">
         <div className="messages-container-centered">
@@ -679,22 +637,40 @@ export function Thread() {
               }
             >
               {message.role === "assistant" &&
-                (message.thinkingActive || message.thinkingText) &&
-                !message.content && (
-                  <div className="message-thinking" aria-live="polite">
-                    {message.thinkingActive && (
-                      <span className="thinking-dot" aria-hidden="true" />
-                    )}
-                    <span>{message.thinkingText || "Thinking..."}</span>
-                  </div>
-                )}
-              {message.content && (
-                <div className="message-content">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {message.content}
-                  </ReactMarkdown>
-                </div>
-              )}
+                (() => {
+                  const thinkingFromContent = extractThinkingFromContent(
+                    message.content
+                  );
+                  const thinkingDisplay =
+                    message.thinkingText || thinkingFromContent;
+                  const visibleContent = stripThinkingFromContent(
+                    message.content
+                  );
+
+                  return (
+                    <>
+                      {(message.thinkingActive || thinkingDisplay) &&
+                        !visibleContent && (
+                          <div className="message-thinking" aria-live="polite">
+                            {message.thinkingActive && (
+                              <span
+                                className="thinking-dot"
+                                aria-hidden="true"
+                              />
+                            )}
+                            <span>{thinkingDisplay || "Thinking..."}</span>
+                          </div>
+                        )}
+                      {visibleContent && (
+                        <div className="message-content">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {visibleContent}
+                          </ReactMarkdown>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               {message.role === "assistant" &&
                 !message.thinkingActive &&
                 message.profiles &&

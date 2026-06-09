@@ -70,16 +70,21 @@ export async function GET(request: Request) {
 
   try {
     const profileImageUrl = await fetchProfileImage({ username, userId });
-    return NextResponse.json({ profileImageUrl });
+    if (profileImageUrl) {
+      return NextResponse.json({ profileImageUrl });
+    }
   } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to fetch profile image",
-      },
-      { status: 500 }
-    );
+    console.warn("X profile image lookup failed, using unavatar fallback:", error);
   }
+
+  if (username) {
+    return NextResponse.json({
+      profileImageUrl: `https://unavatar.io/x/${encodeURIComponent(username)}`,
+    });
+  }
+
+  return NextResponse.json(
+    { error: "Could not resolve a profile image for this user." },
+    { status: 404 }
+  );
 }

@@ -18,7 +18,7 @@ export const mastra = new Mastra({
     enabled: false,
   },
   observability: {
-    // Enables DefaultExporter and CloudExporter for AI tracing
-    default: { enabled: true },
+    // Disabled in dev to avoid "AI Tracing instance already registered" on HMR.
+    default: { enabled: process.env.NODE_ENV === "production" },
   },
 });

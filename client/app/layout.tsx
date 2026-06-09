@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ChatResetProvider } from "@/components/chat-reset-context";
-import { Logo } from "@/components/logo";
+import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,7 +30,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ChatResetProvider>
-          <Logo />
+          <SiteHeader />
           {children}
         </ChatResetProvider>
       </body>
