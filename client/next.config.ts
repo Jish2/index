@@ -1,7 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: [
+    "@mastra/libsql",
+    "@libsql/client",
+    "libsql",
+    "mastra",
+    "@mastra/core",
+  ],
 };
 
 export default nextConfig;

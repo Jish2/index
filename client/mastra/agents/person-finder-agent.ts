@@ -1,6 +1,7 @@
 import { Agent } from "@mastra/core/agent";
 import { Memory } from "@mastra/memory";
 import { LibSQLStore } from "@mastra/libsql";
+import { bedrock, getBedrockModelId } from "@/lib/bedrock";
 import { vectorSearchTool } from "../tools/vector-search-tool";
 import { messagesTool } from "../tools/messages-tool";
 
@@ -26,7 +27,7 @@ Guardrails:
 - If no meaningful matches exist, be transparent and coach the user on how to adjust the query.
 - Respect opt-out: if someone asks to be removed, acknowledge and note that the index honors removal requests.
 `,
-  model: "xai/grok-4",
+  model: () => bedrock(getBedrockModelId()),
   tools: { vectorSearchTool, messagesTool },
   memory: new Memory({
     storage: new LibSQLStore({
