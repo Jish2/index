@@ -1,13 +1,14 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { embedMany } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { createOpenAI } from "@ai-sdk/openai";
 import { neon } from "@neondatabase/serverless";
 import {
   assertUnderUsageCap,
   recordEmbeddingUsage,
   UsageCapExceededError,
 } from "@/lib/usage-cap";
+import { readEnvSecret } from "@/lib/env";
 
 const DEFAULT_PINECONE_HOST =
   "people-on-x-mdlxyiy.svc.aped-4627-b74a.pinecone.io";
@@ -150,13 +151,13 @@ export const vectorSearchTool = createTool({
     ),
   }),
   execute: async ({ context, writer }) => {
-    const pineconeApiKey = process.env.PINECONE_API_KEY;
+    const pineconeApiKey = readEnvSecret("PINECONE_API_KEY");
     const pineconeHost =
       process.env.PINECONE_INDEX_HOST || DEFAULT_PINECONE_HOST;
     const pineconeNamespace =
       process.env.PINECONE_NAMESPACE || DEFAULT_NAMESPACE;
     const databaseUrl = process.env.DATABASE_URL;
-    const openAiKey = process.env.OPENAI_API_KEY;
+    const openAiKey = readEnvSecret("OPENAI_API_KEY");
 
     if (!pineconeApiKey) {
       throw new Error("PINECONE_API_KEY environment variable is required.");
@@ -181,10 +182,26 @@ export const vectorSearchTool = createTool({
     const { query, topK } = context;
     const limit = Math.min(topK ?? DEFAULT_TOP_K, MAX_TOP_K);
 
-    const { embeddings, usage } = await embedMany({
-      model: openai.embedding(EMBED_MODEL),
-      values: [query],
-    });
+    let embeddings: number[][];
+    let usage: { tokens?: number } | undefined;
+    try {
+      const openai = createOpenAI({ apiKey: openAiKey });
+      const result = await embedMany({
+        model: openai.embedding(EMBED_MODEL),
+        values: [query],
+      });
+      embeddings = result.embeddings;
+      usage = result.usage;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "OpenAI embedding request failed.";
+      if (/incorrect api key|invalid api key|401/i.test(message)) {
+        throw new Error(
+          "OPENAI_API_KEY is invalid or expired. Update it in .env.local (and Vercel env for production), then restart the dev server."
+        );
+      }
+      throw new Error(`Failed to embed search query: ${message}`);
+    }
 
     const embedTokens = usage?.tokens ?? Math.ceil(query.length / 4);
     await recordEmbeddingUsage(embedTokens);

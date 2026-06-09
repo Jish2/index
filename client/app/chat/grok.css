@@ -1,7 +1,8 @@
 /* --- Page Container --- */
 .grok-container {
   height: 100vh;
-  padding: 0;
+  padding: var(--site-header-height, 64px) 0 0;
+  box-sizing: border-box;
   background: #141414; /* Dark theme primary background */
   color: #e5e5e5; /* Dark theme text color */
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
