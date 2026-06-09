@@ -1,18 +1,9 @@
-// import { streamText } from "ai";
-// import { openai } from "@ai-sdk/openai";
-
-// export async function POST(req: Request) {
-//   const { messages } = await req.json();
-
-//   const result = streamText({
-//     model: openai('gpt-4o-mini'),
-//     messages,
-//   });
-
-//   return result.toDataStreamResponse();
-// }
-
 import { mastra } from "@/mastra";
+import {
+  assertUnderUsageCap,
+  recordBedrockUsage,
+  UsageCapExceededError,
+} from "@/lib/usage-cap";
 import { NextResponse } from "next/server";
 import { toAISdkFormat } from "@mastra/ai-sdk";
 import { convertMessages } from "@mastra/core/agent";
@@ -23,12 +14,35 @@ const THREAD_ID = "person-finder-thread";
 const RESOURCE_ID = "person-finder-chat";
 
 export async function POST(req: Request) {
+  try {
+    await assertUnderUsageCap();
+  } catch (error) {
+    if (error instanceof UsageCapExceededError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 402 }
+      );
+    }
+    throw error;
+  }
+
   const { messages } = await req.json();
 
   const stream = await personFinderAgent.stream(messages, {
     memory: {
       thread: THREAD_ID,
       resource: RESOURCE_ID,
+    },
+    onFinish: async (event) => {
+      const usage = event.usage;
+      if (!usage) {
+        return;
+      }
+      await recordBedrockUsage({
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        totalTokens: usage.totalTokens,
+      });
     },
   });
 

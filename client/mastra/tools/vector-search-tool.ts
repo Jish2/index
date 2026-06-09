@@ -3,6 +3,11 @@ import { z } from "zod";
 import { embedMany } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { neon } from "@neondatabase/serverless";
+import {
+  assertUnderUsageCap,
+  recordEmbeddingUsage,
+  UsageCapExceededError,
+} from "@/lib/usage-cap";
 
 const DEFAULT_PINECONE_HOST =
   "people-on-x-mdlxyiy.svc.aped-4627-b74a.pinecone.io";
@@ -163,14 +168,26 @@ export const vectorSearchTool = createTool({
       throw new Error("DATABASE_URL environment variable is required.");
     }
 
+    try {
+      await assertUnderUsageCap();
+    } catch (error) {
+      if (error instanceof UsageCapExceededError) {
+        throw new Error(error.message);
+      }
+      throw error;
+    }
+
     const sql = neon(databaseUrl);
     const { query, topK } = context;
     const limit = Math.min(topK ?? DEFAULT_TOP_K, MAX_TOP_K);
 
-    const { embeddings } = await embedMany({
+    const { embeddings, usage } = await embedMany({
       model: openai.embedding(EMBED_MODEL),
       values: [query],
     });
+
+    const embedTokens = usage?.tokens ?? Math.ceil(query.length / 4);
+    await recordEmbeddingUsage(embedTokens);
 
     const [vector] = embeddings;
     if (!vector) {
